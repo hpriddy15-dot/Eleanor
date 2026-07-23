@@ -757,13 +757,13 @@ function itemRow(x,type,showDate){
       <button class="del" onclick="delEvent('${x.id}')">×</button>
     </div>`;
   }
-  return `<div class="item ${x.status==='done'?'done':''} ${x.status==='pending'?'pending':''}">
-    <div class="check ${x.status==='done'?'done':''} ${x.status==='pending'?'pending':''}" onclick="cycleTask('${x.id}')" title="Tap: pending → done → open">
+  return `<div class="item ${x.status==='done'?'done':''} ${x.status==='pending'?'pending':''}" id="row-${x.id}">
+    <div class="check ${x.status==='done'?'done':''} ${x.status==='pending'?'pending':''}" id="chk-${x.id}" onclick="cycleTask('${x.id}')" title="Tap: pending → done → open">
       <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
     </div>
     <div class="body">
-      <div class="title">${escapeHtml(x.title)}</div>
-      <div class="meta">
+      <div class="title" id="title-${x.id}">${escapeHtml(x.title)}</div>
+      <div class="meta" id="meta-${x.id}">
         <span class="tag c-${cat.cls}">${cat.label}</span>
         ${x.status==='pending'?'<span class="pendtag">In progress</span>':''}
         <span class="time">~${x.time}m</span>
@@ -777,7 +777,31 @@ function cycleTask(id){
   const x=state.tasks.find(t=>t.id===id);if(!x)return;
   const order={open:'pending',pending:'done',done:'open'};
   x.status=order[x.status||'open'];
-  save();renderToday();
+
+  const row=document.getElementById('row-'+id);
+  const chk=document.getElementById('chk-'+id);
+  if(row&&chk){
+    row.classList.toggle('done', x.status==='done');
+    row.classList.toggle('pending', x.status==='pending');
+    chk.classList.toggle('done', x.status==='done');
+    chk.classList.toggle('pending', x.status==='pending');
+    const meta=document.getElementById('meta-'+id);
+    if(meta){
+      const pendTag=meta.querySelector('.pendtag');
+      if(x.status==='pending'&&!pendTag){
+        meta.insertAdjacentHTML('beforeend','<span class="pendtag">In progress</span>');
+      }else if(x.status!=='pending'&&pendTag){
+        pendTag.remove();
+      }
+    }
+    const t=todayISO();
+    const openCount=state.tasks.filter(tk=>(!tk.date||tk.date===t)&&tk.status!=='done').length;
+    const cEl=document.getElementById('todayCount');
+    if(cEl) cEl.textContent=openCount?`${openCount} to do`:'';
+  }else{
+    renderToday();
+  }
+  save();
 }
 function delTask(id){state.tasks=state.tasks.filter(t=>t.id!==id);save();renderToday()}
 function delEvent(id){state.events=state.events.filter(e=>e.id!==id);save();renderToday();renderCal()}
