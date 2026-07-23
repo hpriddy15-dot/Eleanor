@@ -1123,11 +1123,16 @@ async function initFirebase(cfg,fresh){
         const cloud=JSON.parse(d.data().state);
         const cloudAt=cloud.updated||d.data().updated||0;
         if(cloudAt<=(state.updated||0)) return; // ignore stale or echoes of our own write
+        // If it's our own write just now finishing its round trip, skip the
+        // rebuild — our screen already shows this. Only redraw for genuinely
+        // new data (e.g. from another device), and only wait ~a second before
+        // trusting it's really "ours."
+        const justSavedByUs = (Date.now()-cloudAt) < 4000 && cloudAt===(state.updated||0);
         snapshot('before-live-update');
         state=Object.assign(state,cloud);
         ['tasks','events'].forEach(k=>(state[k]||[]).forEach(x=>{ x.cat=fixCat(x.cat); }));
         localStorage.setItem(LS,JSON.stringify(state));
-        refreshActive();
+        if(!justSavedByUs) refreshActive();
       }catch(e){ console.error('live update failed',e); }
     });
     setSyncUI(true);
